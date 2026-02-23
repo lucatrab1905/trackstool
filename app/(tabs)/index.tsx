@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,8 +8,10 @@ import {
   TextInput,
   Alert,
   Modal,
+  RefreshControl,
 } from 'react-native';
 import * as Location from 'expo-location';
+import { useFocusEffect } from 'expo-router';
 import { addPoopEntry, getAllSavedLocations } from '../../lib/database';
 import { PoopColor, SavedLocation } from '../../lib/types';
 import { BRISTOL_TYPES } from '../../constants/bristol';
@@ -24,10 +26,17 @@ export default function LogScreen() {
   const [selectedLocationId, setSelectedLocationId] = useState<number | null>(null);
   const [useGps, setUseGps] = useState(true);
   const [locationModalVisible, setLocationModalVisible] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     setSavedLocations(getAllSavedLocations());
-  }, []);
+  }, []));
+
+  function handleRefresh() {
+    setRefreshing(true);
+    setSavedLocations(getAllSavedLocations());
+    setRefreshing(false);
+  }
 
   async function handleLog() {
     let latitude: number | null = null;
@@ -66,7 +75,13 @@ export default function LogScreen() {
     : null;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[Colors.primary]} tintColor={Colors.primary} />
+      }
+    >
 
       {/* Bristol Type */}
       <Text style={styles.sectionTitle}>Shape</Text>

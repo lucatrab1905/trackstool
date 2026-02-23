@@ -68,16 +68,20 @@ export default function LocationsScreen() {
     if (!searchQuery.trim()) return;
     setSearchLoading(true); setSearchResults([]); setSelectedResult(null);
     try {
-      const results = await Location.geocodeAsync(searchQuery.trim());
-      if (results.length === 0) { Alert.alert('No results', 'Try a different address.'); return; }
-      const mapped: SearchResult[] = await Promise.all(
-        results.slice(0, 5).map(async (r) => {
-          const rev = (await Location.reverseGeocodeAsync({ latitude: r.latitude, longitude: r.longitude }))[0];
-          const label = rev ? [rev.name, rev.street, rev.city, rev.country].filter(Boolean).join(', ') : `${r.latitude.toFixed(5)}, ${r.longitude.toFixed(5)}`;
-          return { latitude: r.latitude, longitude: r.longitude, label };
-        })
-      );
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery.trim())}&format=json&limit=5&addressdetails=1`;
+      const response = await fetch(url, {
+        headers: { 'Accept-Language': 'ja,en', 'User-Agent': 'PoopTracker/1.0' },
+      });
+      const data: any[] = await response.json();
+      if (data.length === 0) { Alert.alert('No results', 'Try a different address.'); return; }
+      const mapped: SearchResult[] = data.map((r) => ({
+        latitude: parseFloat(r.lat),
+        longitude: parseFloat(r.lon),
+        label: r.display_name,
+      }));
       setSearchResults(mapped);
+    } catch {
+      Alert.alert('Search failed', 'Could not reach the geocoding service. Check your connection.');
     } finally { setSearchLoading(false); }
   }
 
