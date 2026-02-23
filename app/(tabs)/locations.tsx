@@ -24,6 +24,28 @@ import { Colors, Radius, Shadow } from '../../constants/theme';
 
 type AddMode = 'gps' | 'search';
 
+async function geocodeWithNative(query: string): Promise<{ latitude: number; longitude: number; label: string; nameSuggestion: string }[]> {
+  const results = await Location.geocodeAsync(query);
+  return Promise.all(results.slice(0, 3).map(async r => {
+    const rev = (await Location.reverseGeocodeAsync({ latitude: r.latitude, longitude: r.longitude }))[0];
+    const parts = rev ? [rev.name, rev.street, rev.district, rev.city, rev.region, rev.country].filter(Boolean) : [];
+    const label = parts.length > 0 ? parts.join(', ') : `${r.latitude.toFixed(5)}, ${r.longitude.toFixed(5)}`;
+    const nameSuggestion = rev ? (rev.district ?? rev.subregion ?? rev.city ?? rev.name ?? '').trim() : label.split(',')[0].trim();
+    return { latitude: r.latitude, longitude: r.longitude, label, nameSuggestion };
+  }));
+}
+
+async function geocodeWithNominatim(query: string): Promise<{ latitude: number; longitude: number; label: string; nameSuggestion: string }[]> {
+  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=3&addressdetails=1`;
+  const response = await fetch(url, { headers: { 'Accept-Language': 'ja,en', 'User-Agent': 'PoopTracker/1.0' } });
+  const data: any[] = await response.json();
+  return data.map(r => {
+    const a = r.address ?? {};
+    const nameSuggestion = (a.suburb ?? a.neighbourhood ?? a.quarter ?? a.city_district ?? a.city ?? a.town ?? a.village ?? '').trim();
+    return { latitude: parseFloat(r.lat), longitude: parseFloat(r.lon), label: r.display_name, nameSuggestion };
+  });
+}
+
 interface SearchResult {
   latitude: number;
   longitude: number;
@@ -72,22 +94,23 @@ export default function LocationsScreen() {
     if (!searchQuery.trim()) return;
     setSearchLoading(true); setSearchResults([]); setSelectedResult(null);
     try {
-      const results = await Location.geocodeAsync(searchQuery.trim());
-      if (results.length === 0) { Alert.alert('No results', 'Try a different address.'); return; }
-      const mapped: SearchResult[] = await Promise.all(
-        results.slice(0, 5).map(async (r) => {
-          const rev = (await Location.reverseGeocodeAsync({ latitude: r.latitude, longitude: r.longitude }))[0];
-          const parts = rev
-            ? [rev.name, rev.street, rev.district, rev.city, rev.region, rev.country].filter(Boolean)
-            : [];
-          const label = parts.length > 0 ? parts.join(', ') : `${r.latitude.toFixed(5)}, ${r.longitude.toFixed(5)}`;
-          const nameSuggestion = rev
-            ? (rev.district ?? rev.subregion ?? rev.city ?? rev.name ?? '').trim()
-            : label.split(',')[0].trim();
-          return { latitude: r.latitude, longitude: r.longitude, label, nameSuggestion };
-        })
-      );
-      setSearchResults(mapped);
+      const [nativeRes, nominatimRes] = await Promise.allSettled([
+        geocodeWithNative(searchQuery.trim()),
+        geocodeWithNominatim(searchQuery.trim()),
+      ]);
+      const combined: SearchResult[] = [
+        ...(nativeRes.status === 'fulfilled' ? nativeRes.value : []),
+        ...(nominatimRes.status === 'fulfilled' ? nominatimRes.value : []),
+      ];
+      // Deduplicate results within ~100m of each other
+      const deduped: SearchResult[] = [];
+      for (const r of combined) {
+        if (!deduped.some(d => Math.abs(d.latitude - r.latitude) < 0.001 && Math.abs(d.longitude - r.longitude) < 0.001)) {
+          deduped.push(r);
+        }
+      }
+      if (deduped.length === 0) { Alert.alert('No results', 'Try a different address.'); return; }
+      setSearchResults(deduped.slice(0, 5));
     } catch {
       Alert.alert('Search failed', 'Check your connection and try again.');
     } finally { setSearchLoading(false); }
