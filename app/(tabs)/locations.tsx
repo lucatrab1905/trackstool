@@ -28,6 +28,7 @@ interface SearchResult {
   latitude: number;
   longitude: number;
   label: string;
+  address?: Record<string, string>;
 }
 
 export default function LocationsScreen() {
@@ -78,6 +79,7 @@ export default function LocationsScreen() {
         latitude: parseFloat(r.lat),
         longitude: parseFloat(r.lon),
         label: r.display_name,
+        address: r.address ?? {},
       }));
       setSearchResults(mapped);
     } catch {
@@ -87,7 +89,14 @@ export default function LocationsScreen() {
 
   function handleSelectResult(result: SearchResult) {
     setSelectedResult(result);
-    if (!placeName) setPlaceName(result.label.split(',')[0]);
+    if (!placeName) {
+      const a = result.address ?? {};
+      const suggested =
+        a.suburb ?? a.neighbourhood ?? a.quarter ??
+        a.city_district ?? a.city ?? a.town ?? a.village ??
+        result.label.split(',')[0];
+      setPlaceName(suggested.trim());
+    }
   }
 
   function handleSave() {
