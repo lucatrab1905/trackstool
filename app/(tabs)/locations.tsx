@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -65,6 +65,8 @@ export default function LocationsScreen() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [selectedResult, setSelectedResult] = useState<SearchResult | null>(null);
+
+  useEffect(() => { Location.requestForegroundPermissionsAsync(); }, []);
 
   useFocusEffect(useCallback(() => { setLocations(getAllSavedLocations()); }, []));
 
@@ -155,6 +157,8 @@ export default function LocationsScreen() {
                 ? { latitude: activeResult.latitude, longitude: activeResult.longitude, latitudeDelta: 0.01, longitudeDelta: 0.01 }
                 : { latitude: locations[0].latitude, longitude: locations[0].longitude, latitudeDelta: 0.3, longitudeDelta: 0.3 }
             }
+            showsUserLocation
+            showsMyLocationButton={false}
           >
             {locations.map((loc) => (
               <Marker key={loc.id} coordinate={{ latitude: loc.latitude, longitude: loc.longitude }} title={loc.name} />
