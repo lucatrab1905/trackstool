@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -28,10 +28,11 @@ interface SearchResult {
   latitude: number;
   longitude: number;
   label: string;
-  address?: Record<string, string>;
+  nameSuggestion: string;
 }
 
 export default function LocationsScreen() {
+  const mapRef = useRef<MapView>(null);
   const [locations, setLocations] = useState<SavedLocation[]>([]);
   const [adding, setAdding] = useState(false);
   const [addMode, setAddMode] = useState<AddMode>('gps');
@@ -59,9 +60,11 @@ export default function LocationsScreen() {
       const { latitude, longitude } = loc.coords;
       const reversed = await Location.reverseGeocodeAsync({ latitude, longitude });
       const r = reversed[0];
-      const label = r ? [r.name, r.street, r.city, r.country].filter(Boolean).join(', ') : `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
-      setGpsResult({ latitude, longitude, label });
-      if (!placeName) setPlaceName(r?.name ?? '');
+      const label = r ? [r.name, r.street, r.district, r.city, r.region, r.country].filter(Boolean).join(', ') : `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+      const nameSuggestion = r ? (r.district ?? r.subregion ?? r.city ?? r.name ?? '').trim() : '';
+      setGpsResult({ latitude, longitude, label, nameSuggestion });
+      if (!placeName) setPlaceName(nameSuggestion || r?.name || '');
+      mapRef.current?.animateToRegion({ latitude, longitude, latitudeDelta: 0.01, longitudeDelta: 0.01 }, 500);
     } finally { setGpsLoading(false); }
   }
 
@@ -69,34 +72,34 @@ export default function LocationsScreen() {
     if (!searchQuery.trim()) return;
     setSearchLoading(true); setSearchResults([]); setSelectedResult(null);
     try {
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery.trim())}&format=json&limit=5&addressdetails=1`;
-      const response = await fetch(url, {
-        headers: { 'Accept-Language': 'ja,en', 'User-Agent': 'PoopTracker/1.0' },
-      });
-      const data: any[] = await response.json();
-      if (data.length === 0) { Alert.alert('No results', 'Try a different address.'); return; }
-      const mapped: SearchResult[] = data.map((r) => ({
-        latitude: parseFloat(r.lat),
-        longitude: parseFloat(r.lon),
-        label: r.display_name,
-        address: r.address ?? {},
-      }));
+      const results = await Location.geocodeAsync(searchQuery.trim());
+      if (results.length === 0) { Alert.alert('No results', 'Try a different address.'); return; }
+      const mapped: SearchResult[] = await Promise.all(
+        results.slice(0, 5).map(async (r) => {
+          const rev = (await Location.reverseGeocodeAsync({ latitude: r.latitude, longitude: r.longitude }))[0];
+          const parts = rev
+            ? [rev.name, rev.street, rev.district, rev.city, rev.region, rev.country].filter(Boolean)
+            : [];
+          const label = parts.length > 0 ? parts.join(', ') : `${r.latitude.toFixed(5)}, ${r.longitude.toFixed(5)}`;
+          const nameSuggestion = rev
+            ? (rev.district ?? rev.subregion ?? rev.city ?? rev.name ?? '').trim()
+            : label.split(',')[0].trim();
+          return { latitude: r.latitude, longitude: r.longitude, label, nameSuggestion };
+        })
+      );
       setSearchResults(mapped);
     } catch {
-      Alert.alert('Search failed', 'Could not reach the geocoding service. Check your connection.');
+      Alert.alert('Search failed', 'Check your connection and try again.');
     } finally { setSearchLoading(false); }
   }
 
   function handleSelectResult(result: SearchResult) {
     setSelectedResult(result);
-    if (!placeName) {
-      const a = result.address ?? {};
-      const suggested =
-        a.suburb ?? a.neighbourhood ?? a.quarter ??
-        a.city_district ?? a.city ?? a.town ?? a.village ??
-        result.label.split(',')[0];
-      setPlaceName(suggested.trim());
-    }
+    if (!placeName) setPlaceName(result.nameSuggestion || result.label.split(',')[0].trim());
+    mapRef.current?.animateToRegion(
+      { latitude: result.latitude, longitude: result.longitude, latitudeDelta: 0.01, longitudeDelta: 0.01 },
+      500
+    );
   }
 
   function handleSave() {
@@ -120,14 +123,25 @@ export default function LocationsScreen() {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.container}>
-        {Platform.OS !== 'web' && locations.length > 0 && (
+        {Platform.OS !== 'web' && (locations.length > 0 || activeResult !== null) && (
           <MapView
+            ref={mapRef}
             style={styles.mapPreview}
-            initialRegion={{ latitude: locations[0].latitude, longitude: locations[0].longitude, latitudeDelta: 0.3, longitudeDelta: 0.3 }}
+            initialRegion={
+              activeResult
+                ? { latitude: activeResult.latitude, longitude: activeResult.longitude, latitudeDelta: 0.01, longitudeDelta: 0.01 }
+                : { latitude: locations[0].latitude, longitude: locations[0].longitude, latitudeDelta: 0.3, longitudeDelta: 0.3 }
+            }
           >
             {locations.map((loc) => (
               <Marker key={loc.id} coordinate={{ latitude: loc.latitude, longitude: loc.longitude }} title={loc.name} />
             ))}
+            {activeResult && (
+              <Marker
+                coordinate={{ latitude: activeResult.latitude, longitude: activeResult.longitude }}
+                pinColor={Colors.accent}
+              />
+            )}
           </MapView>
         )}
 
