@@ -1,0 +1,51 @@
+export const BRISTOL_TYPES = [
+  {
+    type: 1,
+    label: 'Type 1',
+    description: 'Separate hard lumps',
+    emoji: '🪨',
+    health: 'Severe constipation',
+  },
+  {
+    type: 2,
+    label: 'Type 2',
+    description: 'Lumpy & sausage-like',
+    emoji: '🌭',
+    health: 'Mild constipation',
+  },
+  {
+    type: 3,
+    label: 'Type 3',
+    description: 'Sausage with cracks',
+    emoji: '🌾',
+    health: 'Normal (slightly dry)',
+  },
+  {
+    type: 4,
+    label: 'Type 4',
+    description: 'Smooth, soft sausage',
+    emoji: '✅',
+    health: 'Ideal – perfectly healthy',
+  },
+  {
+    type: 5,
+    label: 'Type 5',
+    description: 'Soft blobs, clear edges',
+    emoji: '🫧',
+    health: 'Lacking fiber',
+  },
+  {
+    type: 6,
+    label: 'Type 6',
+    description: 'Mushy, ragged edges',
+    emoji: '💧',
+    health: 'Mild diarrhea',
+  },
+  {
+    type: 7,
+    label: 'Type 7',
+    description: 'Liquid, no solid pieces',
+    emoji: '🌊',
+    health: 'Severe diarrhea',
+  },
+] as const;
