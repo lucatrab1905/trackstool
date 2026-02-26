@@ -13,10 +13,13 @@ let setFatalError: (msg: string) => void = () => {};
 
 export default function RootLayout() {
   const [fatalError, setError] = useState<string | null>(null);
+  const [dbReady, setDbReady] = useState(false);
 
   useEffect(() => {
     setFatalError = setError;
-    initDatabase().catch((e: any) => setError('DB init failed: ' + String(e)));
+    initDatabase()
+      .then(() => setDbReady(true))
+      .catch((e: any) => setError('DB init failed: ' + String(e)));
   }, []);
 
   if (fatalError) {
@@ -28,6 +31,10 @@ export default function RootLayout() {
         </ScrollView>
       </View>
     );
+  }
+
+  if (!dbReady) {
+    return <View style={{ flex: 1, backgroundColor: '#ffffff' }} />;
   }
 
   return (
