@@ -14,9 +14,11 @@
     },
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.lucatrab1905.pooptracker",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "PoopTracker uses your location to record where you took a shit.",
-        "NSLocationAlwaysUsageDescription": "PoopTracker uses your location to record where you took a shit."
+        "NSLocationAlwaysUsageDescription": "PoopTracker uses your location to record where you took a shit.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -28,7 +30,9 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
+        "ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
       ]
     },
     "web": {
@@ -43,6 +47,12 @@
           "locationWhenInUsePermission": "PoopTracker uses your location to record where you took a shit."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "967ad8d6-a0a2-449a-99ce-a1aab162d711"
+      }
+    }
   }
 }
