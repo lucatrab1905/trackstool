@@ -1,59 +1,44 @@
 import * as SQLite from 'expo-sqlite';
 import { PoopEntry, SavedLocation } from './types';
 
-const db = SQLite.openDatabaseSync('pooptracker.db');
+const SCHEMA = `
+  CREATE TABLE IF NOT EXISTS saved_locations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    latitude REAL NOT NULL,
+    longitude REAL NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS poop_entries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp TEXT NOT NULL,
+    latitude REAL,
+    longitude REAL,
+    saved_location_id INTEGER,
+    bristol_type INTEGER NOT NULL,
+    color TEXT NOT NULL,
+    notes TEXT DEFAULT '',
+    FOREIGN KEY (saved_location_id) REFERENCES saved_locations(id)
+  );
+`;
 
-// Initialize immediately when the module is first imported
-db.execSync(`
-    CREATE TABLE IF NOT EXISTS saved_locations (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      latitude REAL NOT NULL,
-      longitude REAL NOT NULL
-    );
+let _db: SQLite.SQLiteDatabase | null = null;
 
-    CREATE TABLE IF NOT EXISTS poop_entries (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      timestamp TEXT NOT NULL,
-      latitude REAL,
-      longitude REAL,
-      saved_location_id INTEGER,
-      bristol_type INTEGER NOT NULL,
-      color TEXT NOT NULL,
-      notes TEXT DEFAULT '',
-      FOREIGN KEY (saved_location_id) REFERENCES saved_locations(id)
-    );
-  `);
+function getDb(): SQLite.SQLiteDatabase {
+  if (!_db) {
+    _db = SQLite.openDatabaseSync('pooptracker.db');
+    _db.execSync(SCHEMA);
+  }
+  return _db;
+}
 
 export function initDatabase() {
-  db.execSync(`
-    CREATE TABLE IF NOT EXISTS saved_locations (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      latitude REAL NOT NULL,
-      longitude REAL NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS poop_entries (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      timestamp TEXT NOT NULL,
-      latitude REAL,
-      longitude REAL,
-      saved_location_id INTEGER,
-      bristol_type INTEGER NOT NULL,
-      color TEXT NOT NULL,
-      notes TEXT DEFAULT '',
-      FOREIGN KEY (saved_location_id) REFERENCES saved_locations(id)
-    );
-  `);
+  getDb();
 }
 
 // ─── Poop Entries ────────────────────────────────────────────────────────────
 
-export function addPoopEntry(
-  entry: Omit<PoopEntry, 'id'>
-): PoopEntry {
-  const result = db.runSync(
+export function addPoopEntry(entry: Omit<PoopEntry, 'id'>): PoopEntry {
+  const result = getDb().runSync(
     `INSERT INTO poop_entries
       (timestamp, latitude, longitude, saved_location_id, bristol_type, color, notes)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -69,12 +54,12 @@ export function addPoopEntry(
 }
 
 export function getAllEntries(): PoopEntry[] {
-  const rows = db.getAllSync<any>(`SELECT * FROM poop_entries ORDER BY timestamp DESC`);
+  const rows = getDb().getAllSync<any>(`SELECT * FROM poop_entries ORDER BY timestamp DESC`);
   return rows.map(rowToEntry);
 }
 
 export function getEntriesForYear(year: number): PoopEntry[] {
-  const rows = db.getAllSync<any>(
+  const rows = getDb().getAllSync<any>(
     `SELECT * FROM poop_entries WHERE timestamp LIKE ? ORDER BY timestamp ASC`,
     `${year}-%`
   );
@@ -82,7 +67,7 @@ export function getEntriesForYear(year: number): PoopEntry[] {
 }
 
 export function deleteEntry(id: number) {
-  db.runSync(`DELETE FROM poop_entries WHERE id = ?`, id);
+  getDb().runSync(`DELETE FROM poop_entries WHERE id = ?`, id);
 }
 
 function rowToEntry(row: any): PoopEntry {
@@ -100,10 +85,8 @@ function rowToEntry(row: any): PoopEntry {
 
 // ─── Saved Locations ─────────────────────────────────────────────────────────
 
-export function addSavedLocation(
-  loc: Omit<SavedLocation, 'id'>
-): SavedLocation {
-  const result = db.runSync(
+export function addSavedLocation(loc: Omit<SavedLocation, 'id'>): SavedLocation {
+  const result = getDb().runSync(
     `INSERT INTO saved_locations (name, latitude, longitude) VALUES (?, ?, ?)`,
     loc.name,
     loc.latitude,
@@ -113,7 +96,7 @@ export function addSavedLocation(
 }
 
 export function getAllSavedLocations(): SavedLocation[] {
-  const rows = db.getAllSync<any>(`SELECT * FROM saved_locations ORDER BY name ASC`);
+  const rows = getDb().getAllSync<any>(`SELECT * FROM saved_locations ORDER BY name ASC`);
   return rows.map((r) => ({
     id: r.id,
     name: r.name,
@@ -123,5 +106,5 @@ export function getAllSavedLocations(): SavedLocation[] {
 }
 
 export function deleteSavedLocation(id: number) {
-  db.runSync(`DELETE FROM saved_locations WHERE id = ?`, id);
+  getDb().runSync(`DELETE FROM saved_locations WHERE id = ?`, id);
 }
