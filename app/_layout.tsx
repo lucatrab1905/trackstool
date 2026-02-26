@@ -16,11 +16,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     setFatalError = setError;
-    try {
-      initDatabase();
-    } catch (e: any) {
-      setError('initDatabase failed: ' + String(e));
-    }
+    initDatabase().catch((e: any) => setError('DB init failed: ' + String(e)));
   }, []);
 
   if (fatalError) {

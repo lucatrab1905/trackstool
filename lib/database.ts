@@ -24,15 +24,15 @@ const SCHEMA = `
 let _db: SQLite.SQLiteDatabase | null = null;
 
 function getDb(): SQLite.SQLiteDatabase {
-  if (!_db) {
-    _db = SQLite.openDatabaseSync('pooptracker.db');
-    _db.execSync(SCHEMA);
-  }
+  if (!_db) throw new Error('Database not initialized');
   return _db;
 }
 
-export function initDatabase() {
-  getDb();
+// Open DB and create schema asynchronously so Objective-C exceptions
+// are converted to promise rejections instead of crashing the app.
+export async function initDatabase(): Promise<void> {
+  _db = await SQLite.openDatabaseAsync('pooptracker.db');
+  await _db.execAsync(SCHEMA);
 }
 
 // ─── Poop Entries ────────────────────────────────────────────────────────────
@@ -54,16 +54,14 @@ export function addPoopEntry(entry: Omit<PoopEntry, 'id'>): PoopEntry {
 }
 
 export function getAllEntries(): PoopEntry[] {
-  const rows = getDb().getAllSync<any>(`SELECT * FROM poop_entries ORDER BY timestamp DESC`);
-  return rows.map(rowToEntry);
+  return getDb().getAllSync<any>(`SELECT * FROM poop_entries ORDER BY timestamp DESC`).map(rowToEntry);
 }
 
 export function getEntriesForYear(year: number): PoopEntry[] {
-  const rows = getDb().getAllSync<any>(
+  return getDb().getAllSync<any>(
     `SELECT * FROM poop_entries WHERE timestamp LIKE ? ORDER BY timestamp ASC`,
     `${year}-%`
-  );
-  return rows.map(rowToEntry);
+  ).map(rowToEntry);
 }
 
 export function deleteEntry(id: number) {
@@ -96,8 +94,7 @@ export function addSavedLocation(loc: Omit<SavedLocation, 'id'>): SavedLocation 
 }
 
 export function getAllSavedLocations(): SavedLocation[] {
-  const rows = getDb().getAllSync<any>(`SELECT * FROM saved_locations ORDER BY name ASC`);
-  return rows.map((r) => ({
+  return getDb().getAllSync<any>(`SELECT * FROM saved_locations ORDER BY name ASC`).map((r) => ({
     id: r.id,
     name: r.name,
     latitude: r.latitude,
