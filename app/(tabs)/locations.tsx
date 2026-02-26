@@ -68,7 +68,7 @@ export default function LocationsScreen() {
 
   useEffect(() => { Location.requestForegroundPermissionsAsync(); }, []);
 
-  useFocusEffect(useCallback(() => { setLocations(getAllSavedLocations()); }, []));
+  useFocusEffect(useCallback(() => { getAllSavedLocations().then(setLocations); }, []));
 
   function resetAddPanel() {
     setAdding(false); setAddMode('gps'); setPlaceName('');
@@ -127,19 +127,19 @@ export default function LocationsScreen() {
     );
   }
 
-  function handleSave() {
+  async function handleSave() {
     const target = addMode === 'gps' ? gpsResult : selectedResult;
     if (!target) { Alert.alert('No location', addMode === 'gps' ? 'Tap "Get my location" first.' : 'Select a result first.'); return; }
     if (!placeName.trim()) { Alert.alert('Name required', 'Please enter a name for this place.'); return; }
-    addSavedLocation({ name: placeName.trim(), latitude: target.latitude, longitude: target.longitude });
-    setLocations(getAllSavedLocations());
+    await addSavedLocation({ name: placeName.trim(), latitude: target.latitude, longitude: target.longitude });
+    setLocations(await getAllSavedLocations());
     resetAddPanel();
   }
 
   function handleDelete(id: number, name: string) {
     Alert.alert('Delete place', `Remove "${name}"?`, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => { deleteSavedLocation(id); setLocations(getAllSavedLocations()); } },
+      { text: 'Delete', style: 'destructive', onPress: async () => { await deleteSavedLocation(id); setLocations(await getAllSavedLocations()); } },
     ]);
   }
 

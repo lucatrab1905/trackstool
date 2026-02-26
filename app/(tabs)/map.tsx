@@ -32,9 +32,10 @@ export default function MapScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      const all = getAllEntries().filter((e) => e.latitude !== null && e.longitude !== null);
-      setEntries(all);
-      setSavedLocations(getAllSavedLocations());
+      Promise.all([getAllEntries(), getAllSavedLocations()]).then(([all, locs]) => {
+        setEntries(all.filter((e) => e.latitude !== null && e.longitude !== null));
+        setSavedLocations(locs);
+      });
     }, [])
   );
 

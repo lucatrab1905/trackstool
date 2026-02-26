@@ -29,12 +29,12 @@ export default function LogScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   useFocusEffect(useCallback(() => {
-    setSavedLocations(getAllSavedLocations());
+    getAllSavedLocations().then(setSavedLocations);
   }, []));
 
-  function handleRefresh() {
+  async function handleRefresh() {
     setRefreshing(true);
-    setSavedLocations(getAllSavedLocations());
+    setSavedLocations(await getAllSavedLocations());
     setRefreshing(false);
   }
 
@@ -54,7 +54,7 @@ export default function LogScreen() {
       if (loc) { latitude = loc.latitude; longitude = loc.longitude; }
     }
 
-    addPoopEntry({
+    await addPoopEntry({
       timestamp: new Date().toISOString(),
       latitude,
       longitude,

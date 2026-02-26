@@ -25,10 +25,10 @@ export default function StatsScreen() {
   const [calMonth, setCalMonth] = useState(new Date().getMonth());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
-  function reload() {
-    const all = getAllEntries();
+  async function reload() {
+    const [all, yearData] = await Promise.all([getAllEntries(), getEntriesForYear(calYear)]);
     setAllEntries(all);
-    setYearEntries(getEntriesForYear(calYear));
+    setYearEntries(yearData);
   }
 
   useFocusEffect(useCallback(() => { reload(); }, [calYear]));
@@ -53,7 +53,7 @@ export default function StatsScreen() {
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
   const totalCells = Math.ceil((startOffset + daysInMonth) / 7) * 7;
 
-  function changeMonth(delta: number) {
+  async function changeMonth(delta: number) {
     let m = calMonth + delta;
     let y = calYear;
     if (m < 0) { m = 11; y--; }
@@ -61,7 +61,7 @@ export default function StatsScreen() {
     setCalMonth(m);
     setCalYear(y);
     setSelectedDay(null);
-    setYearEntries(getEntriesForYear(y));
+    setYearEntries(await getEntriesForYear(y));
   }
 
   function handleDeleteEntry(entry: PoopEntry) {
@@ -70,9 +70,9 @@ export default function StatsScreen() {
       {
         text: 'Delete',
         style: 'destructive',
-        onPress: () => {
-          deleteEntry(entry.id);
-          reload();
+        onPress: async () => {
+          await deleteEntry(entry.id);
+          await reload();
           const key = entry.timestamp.slice(0, 10);
           if (entriesByDay[key]?.length <= 1) setSelectedDay(null);
         },
