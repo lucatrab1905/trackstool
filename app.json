@@ -45,8 +45,7 @@
         {
           "locationWhenInUsePermission": "PoopTracker uses your location to record where you took a shit."
         }
-      ],
-      "./plugins/ios26-fix"
+      ]
     ],
     "extra": {
       "router": {},
