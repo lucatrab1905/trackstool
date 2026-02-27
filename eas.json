@@ -10,7 +10,7 @@
     },
     "preview": {
       "distribution": "internal",
-      "prebuildCommand": "expo prebuild --platform ios && node postinstall.js"
+      "prebuildCommand": "npm run prebuild:ios"
     },
     "production": {
       "autoIncrement": true
